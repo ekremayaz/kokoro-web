@@ -10,6 +10,7 @@ const model_id = "onnx-community/Kokoro-82M-v1.0-ONNX";
 const tts = await KokoroTTS.from_pretrained(model_id, {
   dtype: device === "wasm" ? "q8" : "fp32",
   device,
+  remote: true,
 }).catch((e: Error) => {
   self.postMessage({ status: "error", error: e.message });
   throw e;
@@ -22,7 +23,7 @@ self.addEventListener("message", async (e) => {
 
   const streamer = new TextSplitterStream();
   streamer.push(text);
-  streamer.close(); // Indicate we won't add more text
+  streamer.close();
 
   const stream = tts.stream(streamer, { voice, speed });
 
