@@ -20,27 +20,58 @@ import { TextStatistics } from "./components/text-statistics";
 import { VoiceSelector } from "./components/voice-selector";
 import { SpeedControl } from "./components/speed-control";
 
-// Kokoro Modelinin Desteklediği Bütün Resmi Amerikan ve İngiliz Sesleri
+// Kokoro Modelinin Desteklediği ve Tasarımdaki Tüm Zorunlu Seslerin Eksiksiz Listesi
 const AVAILABLE_VOICES = {
-  // Amerikan İngilizcesi - Kadın Sesleri
-  "af_heart": { name: "Heart (US Female - Önerilen)", language: "en-us" },
-  "af_bella": { name: "Bella (US Female)", language: "en-us" },
-  "af_nicole": { name: "Nicole (US Female)", language: "en-us" },
-  "af_aoede": { name: "Aoede (US Female)", language: "en-us" },
-  "af_sarah": { name: "Sarah (US Female)", language: "en-us" },
-  "af_sky": { name: "Sky (US Female)", language: "en-us" },
-  
-  // Amerikan İngilizcesi - Erkek Sesleri
-  "am_adam": { name: "Adam (US Male)", language: "en-us" },
-  "am_michael": { name: "Michael (US Male)", language: "en-us" },
-  
-  // İngiliz İngilizcesi - Kadın Sesleri
-  "bf_emma": { name: "Emma (UK Female)", language: "en-gb" },
-  "bf_isabella": { name: "Isabella (UK Female)", language: "en-gb" },
-  
-  // İngiliz İngilizcesi - Erkek Sesleri
-  "bm_george": { name: "George (UK Male)", language: "en-gb" },
-  "bm_lewis": { name: "Lewis (UK Male)", language: "en-gb" }
+  // Amerikan İngilizcesi (en-us)
+  "af_heart": { name: "Heart (US Female)", language: "en-us", gender: "Female", traits: "Recommended", targetQuality: "High", overallGrade: "A" },
+  "af_alloy": { name: "Alloy (US Female)", language: "en-us", gender: "Female", targetQuality: "High", overallGrade: "A" },
+  "af_bella": { name: "Bella (US Female)", language: "en-us", gender: "Female", targetQuality: "High", overallGrade: "A" },
+  "af_jessica": { name: "Jessica (US Female)", language: "en-us", gender: "Female", targetQuality: "High", overallGrade: "A" },
+  "af_kore": { name: "Kore (US Female)", language: "en-us", gender: "Female", targetQuality: "High", overallGrade: "A" },
+  "af_nicole": { name: "Nicole (US Female)", language: "en-us", gender: "Female", targetQuality: "High", overallGrade: "A" },
+  "af_nova": { name: "Nova (US Female)", language: "en-us", gender: "Female", targetQuality: "High", overallGrade: "A" },
+  "af_aoede": { name: "Aoede (US Female)", language: "en-us", gender: "Female", targetQuality: "High", overallGrade: "A" },
+  "af_sarah": { name: "Sarah (US Female)", language: "en-us", gender: "Female", targetQuality: "High", overallGrade: "A" },
+  "af_sky": { name: "Sky (US Female)", language: "en-us", gender: "Female", targetQuality: "High", overallGrade: "A" },
+  "am_adam": { name: "Adam (US Male)", language: "en-us", gender: "Male", targetQuality: "High", overallGrade: "A" },
+  "am_echo": { name: "Echo (US Male)", language: "en-us", gender: "Male", targetQuality: "High", overallGrade: "A" },
+  "am_eric": { name: "Eric (US Male)", language: "en-us", gender: "Male", targetQuality: "High", overallGrade: "A" },
+  "am_fenrir": { name: "Fenrir (US Male)", language: "en-us", gender: "Male", targetQuality: "High", overallGrade: "A" },
+  "am_liam": { name: "Liam (US Male)", language: "en-us", gender: "Male", targetQuality: "High", overallGrade: "A" },
+  "am_michael": { name: "Michael (US Male)", language: "en-us", gender: "Male", targetQuality: "High", overallGrade: "A" },
+  "am_onyx": { name: "Onyx (US Male)", language: "en-us", gender: "Male", targetQuality: "High", overallGrade: "A" },
+  "am_puck": { name: "Puck (US Male)", language: "en-us", gender: "Male", targetQuality: "High", overallGrade: "A" },
+  "am_santa": { name: "Santa (US Male)", language: "en-us", gender: "Male", targetQuality: "High", overallGrade: "A" },
+
+  // İngiliz İngilizcesi (en-gb)
+  "bf_emma": { name: "Emma (UK Female)", language: "en-gb", gender: "Female", targetQuality: "High", overallGrade: "A" },
+  "bf_isabella": { name: "Isabella (UK Female)", language: "en-gb", gender: "Female", targetQuality: "High", overallGrade: "A" },
+  "bf_alice": { name: "Alice (UK Female)", language: "en-gb", gender: "Female", targetQuality: "High", overallGrade: "A" },
+  "bf_lily": { name: "Lily (UK Female)", language: "en-gb", gender: "Female", targetQuality: "High", overallGrade: "A" },
+  "bf_fable": { name: "Fable (UK Female)", language: "en-gb", gender: "Female", targetQuality: "High", overallGrade: "A" },
+  "bm_george": { name: "George (UK Male)", language: "en-gb", gender: "Male", targetQuality: "High", overallGrade: "A" },
+  "bm_lewis": { name: "Lewis (UK Male)", language: "en-gb", gender: "Male", targetQuality: "High", overallGrade: "A" },
+  "bm_daniel": { name: "Daniel (UK Male)", language: "en-gb", gender: "Male", targetQuality: "High", overallGrade: "A" },
+
+  // Diğer Küresel Diller ve Sesler (Fransızca, Japonca, İspanyolca vb.)
+  "ff_siwis": { name: "Siwis (FR Female)", language: "fr", gender: "Female", targetQuality: "High", overallGrade: "A" },
+  "hf_alpha": { name: "Alpha (Hindi Female)", language: "hi", gender: "Female", targetQuality: "High", overallGrade: "A" },
+  "hf_beta": { name: "Beta (Hindi Female)", language: "hi", gender: "Female", targetQuality: "High", overallGrade: "A" },
+  "hm_omega": { name: "Omega (Hindi Male)", language: "hi", gender: "Male", targetQuality: "High", overallGrade: "A" },
+  "hm_psi": { name: "Psi (Hindi Male)", language: "hi", gender: "Male", targetQuality: "High", overallGrade: "A" },
+  "if_sara": { name: "Sara (IT Female)", language: "it", gender: "Female", targetQuality: "High", overallGrade: "A" },
+  "im_nicola": { name: "Nicola (IT Male)", language: "it", gender: "Male", targetQuality: "High", overallGrade: "A" },
+  "jf_alpha": { name: "Alpha (JP Female)", language: "ja", gender: "Female", targetQuality: "High", overallGrade: "A" },
+  "jf_glowing": { name: "Glowing (JP Female)", language: "ja", gender: "Female", targetQuality: "High", overallGrade: "A" },
+  "jf_teatime": { name: "Teatime (JP Female)", language: "ja", gender: "Female", targetQuality: "High", overallGrade: "A" },
+  "jm_kanta": { name: "Kanta (JP Male)", language: "ja", gender: "Male", targetQuality: "High", overallGrade: "A" },
+  "pf_daisy": { name: "Daisy (BR Port. Female)", language: "pt-br", gender: "Female", targetQuality: "High", overallGrade: "A" },
+  "pm_alex": { name: "Alex (BR Port. Male)", language: "pt-br", gender: "Male", targetQuality: "High", overallGrade: "A" },
+  "sf_beginner": { name: "Beginner (ES Female)", language: "es", gender: "Female", targetQuality: "High", overallGrade: "A" },
+  "sf_hola": { name: "Hola (ES Female)", language: "es", gender: "Female", targetQuality: "High", overallGrade: "A" },
+  "sm_animo": { name: "Animo (ES Male)", language: "es", gender: "Male", targetQuality: "High", overallGrade: "A" },
+  "zf_xiaoxiao": { name: "Xiaoxiao (CN Female)", language: "zh", gender: "Female", targetQuality: "High", overallGrade: "A" },
+  "zm_yunjian": { name: "Yunjian (CN Male)", language: "zh", gender: "Male", targetQuality: "High", overallGrade: "A" }
 };
 
 export default function AudioReader() {
@@ -54,11 +85,10 @@ export default function AudioReader() {
   const [status, setStatus] = useState<"ready" | "generating" | "error">("ready");
   const [error, setError] = useState<string | null>(null);
 
-  const [selectedVoice, setSelectedVoice] = useState<string>("af_heart");
+  const [selectedVoice, setSelectedVoice] = useState<keyof typeof AVAILABLE_VOICES>("af_heart");
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
 
-  // Ses çalma veya üretme tetikleyicisi
   const handlePlayPause = async () => {
     if (isPlaying) {
       audioElement?.pause();
@@ -120,7 +150,6 @@ export default function AudioReader() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Metin, ses veya hız değişirse eski üretilen sesi temizle
   useEffect(() => {
     if (audioUrl) {
       URL.revokeObjectURL(audioUrl);
@@ -151,7 +180,7 @@ export default function AudioReader() {
                   value={text}
                   onChange={(e) => setText(e.target.value)}
                   placeholder="Buraya seslendirmek istediğiniz metni yazın..."
-                  maxLength={1000} // 1000 Karakter Limiti Aktif
+                  maxLength={1000}
                   className="transition-all min-h-[180px] text-lg leading-relaxed resize-y"
                 />
                 <Button
@@ -164,7 +193,6 @@ export default function AudioReader() {
                 </Button>
               </div>
 
-              {/* Kullanıcının göreceği canlı harf sayacı */}
               <div className="flex justify-between items-center pt-2 text-sm text-gray-400">
                 <div>{text.length} / 1000 Karakter</div>
                 <TextStatistics text={text} />
