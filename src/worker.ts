@@ -1,59 +1,61 @@
-import { KokoroTTS, TextSplitterStream } from "kokoro-js";
-import { detectWebGPU } from "./utils";
+export default {
+  async fetch(request: Request, env: any, ctx: any): Promise<Response> {
+    const corsHeaders = {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+    };
 
-// Device detection
-const device = (await detectWebGPU()) ? "webgpu" : "wasm";
-self.postMessage({ status: "device", device });
-
-// Load the model
-const model_id = "onnx-community/Kokoro-82M-v1.0-ONNX";
-const tts = await KokoroTTS.from_pretrained(model_id, {
-  dtype: device === "wasm" ? "q8" : "fp32",
-  device
-}).catch((e: Error) => {
-  self.postMessage({ status: "error", error: e.message });
-  throw e;
-});
-self.postMessage({ status: "ready", voices: tts.voices, device });
-
-// Listen for messages from the main thread
-self.addEventListener("message", async (e) => {
-  const { text, voice, speed } = e.data;
-
-  const streamer = new TextSplitterStream();
-  streamer.push(text);
-  streamer.close();
-
-  const stream = tts.stream(streamer, { voice, speed });
-
-  const chunks = [];
-  for await (const { text, audio } of stream) {
-    self.postMessage({
-      status: "stream",
-      chunk: {
-        audio: audio.toBlob(),
-        text,
-      },
-    });
-    chunks.push(audio);
-  }
-
-  // Merge chunks
-  let audio;
-  if (chunks.length > 0) {
-    const sampling_rate = chunks[0].sampling_rate;
-    const length = chunks.reduce((sum, chunk) => sum + chunk.audio.length, 0);
-    const waveform = new Float32Array(length);
-    let offset = 0;
-    for (const { audio } of chunks) {
-      waveform.set(audio, offset);
-      offset += audio.length;
+    if (request.method === "OPTIONS") {
+      return new Response(null, { headers: corsHeaders });
     }
 
-    // Create a new merged RawAudio
-    // @ts-expect-error - So that we don't need to import RawAudio
-    audio = new chunks[0].constructor(waveform, sampling_rate);
-  }
+    if (request.method !== "POST") {
+      return new Response(JSON.stringify({ error: "Sadece POST istekleri desteklenir." }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
-  self.postMessage({ status: "complete", audio: audio.toBlob() });
-});
+    try {
+      const { text, voice } = await request.json();
+
+      if (!text) {
+        throw new Error("Metin alanı boş olamaz.");
+      }
+
+      // İşlemi kullanıcının telefonu yerine Hugging Face sunucularına yaptırıyoruz
+      const hfResponse = await fetch(
+        "https://api-inference.huggingface.co/models/hexgrad/Kokoro-82M",
+        {
+          headers: {
+            "Authorization": `Bearer ${env.HF_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          method: "POST",
+          body: JSON.stringify({ inputs: text }),
+        }
+      );
+
+      if (!hfResponse.ok) {
+        const errorText = await hfResponse.text();
+        throw new Error(`Yapay zeka sunucu hatası: ${hfResponse.status} - ${errorText}`);
+      }
+
+      const audioBuffer = await hfResponse.arrayBuffer();
+
+      return new Response(audioBuffer, {
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "audio/mpeg",
+        },
+      });
+
+    } catch (error: any) {
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+  },
+};
