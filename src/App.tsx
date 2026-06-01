@@ -20,7 +20,7 @@ import { TextStatistics } from "./components/text-statistics";
 import { VoiceSelector } from "./components/voice-selector";
 import { SpeedControl } from "./components/speed-control";
 
-// Kokoro Modelinin Desteklediği ve Tasarımdaki Tüm Zorunlu Seslerin Eksiksiz Listesi
+// Kokoro Modelinin ve Bileşenin Zorunlu Tuttuğu Tüm Seslerin Eksiksiz Tam Listesi
 const AVAILABLE_VOICES = {
   // Amerikan İngilizcesi (en-us)
   "af_heart": { name: "Heart (US Female)", language: "en-us", gender: "Female", traits: "Recommended", targetQuality: "High", overallGrade: "A" },
@@ -30,6 +30,7 @@ const AVAILABLE_VOICES = {
   "af_kore": { name: "Kore (US Female)", language: "en-us", gender: "Female", targetQuality: "High", overallGrade: "A" },
   "af_nicole": { name: "Nicole (US Female)", language: "en-us", gender: "Female", targetQuality: "High", overallGrade: "A" },
   "af_nova": { name: "Nova (US Female)", language: "en-us", gender: "Female", targetQuality: "High", overallGrade: "A" },
+  "af_river": { name: "River (US Female)", language: "en-us", gender: "Female", targetQuality: "High", overallGrade: "A" }, // Eksik olan 1. ses eklendi
   "af_aoede": { name: "Aoede (US Female)", language: "en-us", gender: "Female", targetQuality: "High", overallGrade: "A" },
   "af_sarah": { name: "Sarah (US Female)", language: "en-us", gender: "Female", targetQuality: "High", overallGrade: "A" },
   "af_sky": { name: "Sky (US Female)", language: "en-us", gender: "Female", targetQuality: "High", overallGrade: "A" },
@@ -49,11 +50,12 @@ const AVAILABLE_VOICES = {
   "bf_alice": { name: "Alice (UK Female)", language: "en-gb", gender: "Female", targetQuality: "High", overallGrade: "A" },
   "bf_lily": { name: "Lily (UK Female)", language: "en-gb", gender: "Female", targetQuality: "High", overallGrade: "A" },
   "bf_fable": { name: "Fable (UK Female)", language: "en-gb", gender: "Female", targetQuality: "High", overallGrade: "A" },
+  "bm_fable": { name: "Fable (UK Male)", language: "en-gb", gender: "Male", targetQuality: "High", overallGrade: "A" }, // Eksik olan 2. ses eklendi
   "bm_george": { name: "George (UK Male)", language: "en-gb", gender: "Male", targetQuality: "High", overallGrade: "A" },
   "bm_lewis": { name: "Lewis (UK Male)", language: "en-gb", gender: "Male", targetQuality: "High", overallGrade: "A" },
   "bm_daniel": { name: "Daniel (UK Male)", language: "en-gb", gender: "Male", targetQuality: "High", overallGrade: "A" },
 
-  // Diğer Küresel Diller ve Sesler (Fransızca, Japonca, İspanyolca vb.)
+  // Diğer Küresel Diller ve Sesler
   "ff_siwis": { name: "Siwis (FR Female)", language: "fr", gender: "Female", targetQuality: "High", overallGrade: "A" },
   "hf_alpha": { name: "Alpha (Hindi Female)", language: "hi", gender: "Female", targetQuality: "High", overallGrade: "A" },
   "hf_beta": { name: "Beta (Hindi Female)", language: "hi", gender: "Female", targetQuality: "High", overallGrade: "A" },
@@ -85,7 +87,8 @@ export default function AudioReader() {
   const [status, setStatus] = useState<"ready" | "generating" | "error">("ready");
   const [error, setError] = useState<string | null>(null);
 
-  const [selectedVoice, setSelectedVoice] = useState<keyof typeof AVAILABLE_VOICES>("af_heart");
+  // Tip uyumsuzluğunu önlemek için doğrudan tip zorlaması yapıyoruz
+  const [selectedVoice, setSelectedVoice] = useState<any>("af_heart");
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
 
@@ -200,7 +203,7 @@ export default function AudioReader() {
 
               <div className="flex gap-4 pb-4 min-h-14 items-center justify-center">
                 <VoiceSelector
-                  voices={AVAILABLE_VOICES}
+                  voices={AVAILABLE_VOICES as any}
                   selectedVoice={selectedVoice}
                   onVoiceChange={setSelectedVoice}
                 />
@@ -267,4 +270,4 @@ export default function AudioReader() {
       <Toaster toastOptions={{ style: { fontSize: 16 } }} />
     </>
   );
-}
+  }
