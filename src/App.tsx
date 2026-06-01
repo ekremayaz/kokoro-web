@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import {
   Download,
   Pause,
@@ -18,105 +18,100 @@ import { toast } from "sonner";
 
 import { TextStatistics } from "./components/text-statistics";
 import { VoiceSelector } from "./components/voice-selector";
-import type { Voices } from "./components/voice-selector";
 import { SpeedControl } from "./components/speed-control";
-import { AudioChunk } from "./components/audio-chunk";
-import type { AudioChunkData } from "./components/audio-chunk";
+
+// Kokoro Modelinin Desteklediği Bütün Resmi Amerikan ve İngiliz Sesleri
+const AVAILABLE_VOICES = {
+  // Amerikan İngilizcesi - Kadın Sesleri
+  "af_heart": { name: "Heart (US Female - Önerilen)", language: "en-us" },
+  "af_bella": { name: "Bella (US Female)", language: "en-us" },
+  "af_nicole": { name: "Nicole (US Female)", language: "en-us" },
+  "af_aoede": { name: "Aoede (US Female)", language: "en-us" },
+  "af_sarah": { name: "Sarah (US Female)", language: "en-us" },
+  "af_sky": { name: "Sky (US Female)", language: "en-us" },
+  
+  // Amerikan İngilizcesi - Erkek Sesleri
+  "am_adam": { name: "Adam (US Male)", language: "en-us" },
+  "am_michael": { name: "Michael (US Male)", language: "en-us" },
+  
+  // İngiliz İngilizcesi - Kadın Sesleri
+  "bf_emma": { name: "Emma (UK Female)", language: "en-gb" },
+  "bf_isabella": { name: "Isabella (UK Female)", language: "en-gb" },
+  
+  // İngiliz İngilizcesi - Erkek Sesleri
+  "bm_george": { name: "George (UK Male)", language: "en-gb" },
+  "bm_lewis": { name: "Lewis (UK Male)", language: "en-gb" }
+};
 
 export default function AudioReader() {
   const [text, setText] = useState(
-    "Kokoro is an open-weight TTS model with 82 million parameters. Despite its lightweight architecture, it delivers comparable quality to larger models while being significantly faster and more cost-efficient. With Apache-licensed weights, Kokoro can be deployed anywhere from production environments to personal projects. It can even run 100% locally in your browser, powered by Transformers.js!",
+    "Kokoro is an open-weight TTS model with 82 million parameters. It delivers incredible voice quality while being hosted fully on the cloud now!",
   );
-  const [lastGeneration, setLastGeneration] = useState<{
-    text: string;
-    speed: number;
-    voice: keyof Voices;
-  } | null>(null);
 
   const [isPlaying, setIsPlaying] = useState(false);
-  const [currentChunkIndex, setCurrentChunkIndex] = useState(-1);
   const [speed, setSpeed] = useState(1);
   const [copied, setCopied] = useState(false);
-
-  const [status, setStatus] = useState<
-    "loading" | "ready" | "generating" | "error"
-  >("loading");
+  const [status, setStatus] = useState<"ready" | "generating" | "error">("ready");
   const [error, setError] = useState<string | null>(null);
 
-  const worker = useRef<Worker | null>(null);
-  const [voices, setVoices] = useState<Voices | null>(null);
-  const [selectedVoice, setSelectedVoice] = useState<keyof Voices>("af_heart");
-  const [chunks, setChunks] = useState<AudioChunkData[]>([]);
-  const [result, setResult] = useState<Blob | null>(null);
+  const [selectedVoice, setSelectedVoice] = useState<string>("af_heart");
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
 
-  useEffect(() => {
-    worker.current ??= new Worker(new URL("./worker.js", import.meta.url), {
-      type: "module",
-    });
+  // Ses çalma veya üretme tetikleyicisi
+  const handlePlayPause = async () => {
+    if (isPlaying) {
+      audioElement?.pause();
+      setIsPlaying(false);
+      return;
+    }
 
-    // Create a callback function for messages from the worker thread.
-    // @ts-expect-error - No need to define type for data
-    const onMessageReceived = ({ data }) => {
-      switch (data.status) {
-        case "device":
-          toast("Device detected: " + data.device);
-          break;
-        case "ready":
-          toast("Model loaded successfully");
-          setStatus("ready");
-          setVoices(data.voices);
-          break;
-        case "error":
-          setStatus("error");
-          setError(data.data);
-          break;
-        case "stream": {
-          setChunks((prev) => [...prev, data.chunk]);
-          break;
-        }
-        case "complete": {
-          setStatus("ready");
-          setResult(data.audio);
-          break;
-        }
+    if (audioUrl && audioElement) {
+      audioElement.playbackRate = speed;
+      audioElement.play();
+      setIsPlaying(true);
+      return;
+    }
+
+    setStatus("generating");
+    setError(null);
+    const toastId = toast.loading("Ses sunucuda üretiliyor, lütfen bekleyin...");
+
+    try {
+      const response = await fetch("/_worker.js", { 
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, voice: selectedVoice, speed })
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || "Ses üretilirken sunucu hatası oluştu.");
       }
-    };
 
-    const onErrorReceived = (e: ErrorEvent) => {
-      console.error("Worker error:", e);
-      setError(e.message);
-    };
+      const audioBlob = await response.blob();
+      const url = URL.createObjectURL(audioBlob);
+      
+      const audio = new Audio(url);
+      audio.playbackRate = speed;
+      audio.onended = () => setIsPlaying(false);
+      
+      setAudioUrl(url);
+      setAudioElement(audio);
+      setStatus("ready");
+      setIsPlaying(true);
+      audio.play();
+      
+      toast.dismiss(toastId);
+      toast.success("Ses başarıyla üretildi!");
 
-    // Attach the callback function as an event listener.
-    worker.current?.addEventListener("message", onMessageReceived);
-    worker.current?.addEventListener("error", onErrorReceived);
-
-    // Define a cleanup function for when the component is unmounted.
-    return () => {
-      worker.current?.removeEventListener("message", onMessageReceived);
-      worker.current?.removeEventListener("error", onErrorReceived);
-    };
-  }, []);
-
-  const processed =
-    lastGeneration &&
-    lastGeneration.text === text &&
-    lastGeneration.speed === speed &&
-    lastGeneration.voice === selectedVoice;
-
-  const handlePlayPause = () => {
-    if (!isPlaying && status === "ready" && !processed) {
-      setStatus("generating");
-      setChunks([]);
-      setCurrentChunkIndex(0);
-      const params = { text, voice: selectedVoice, speed };
-      setLastGeneration(params);
-      worker.current?.postMessage(params);
+    } catch (err: any) {
+      console.error(err);
+      setStatus("error");
+      setError(err.message);
+      toast.dismiss(toastId);
+      toast.error("Hata: " + err.message);
     }
-    if (currentChunkIndex === -1) {
-      setCurrentChunkIndex(0);
-    }
-    setIsPlaying(!isPlaying);
   };
 
   const handleCopy = async () => {
@@ -124,6 +119,16 @@ export default function AudioReader() {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  // Metin, ses veya hız değişirse eski üretilen sesi temizle
+  useEffect(() => {
+    if (audioUrl) {
+      URL.revokeObjectURL(audioUrl);
+      setAudioUrl(null);
+      setAudioElement(null);
+      setIsPlaying(false);
+    }
+  }, [text, selectedVoice, speed]);
 
   return (
     <>
@@ -135,7 +140,7 @@ export default function AudioReader() {
               <h1 className="text-5xl font-bold text-gray-900">Kokoro Web</h1>
             </div>
             <p className="text-gray-500">
-              Convert text to natural-sounding speech
+              Metinleri cihazınızı yormadan, bulut gücüyle doğal sese dönüştürün
             </p>
           </div>
 
@@ -145,8 +150,9 @@ export default function AudioReader() {
                 <Textarea
                   value={text}
                   onChange={(e) => setText(e.target.value)}
-                  placeholder="Type or paste your text here..."
-                  className={`transition-all min-h-[180px] text-lg leading-relaxed ${processed && status === "ready" ? "bg-green-100" : ""} resize-y ${status === "loading" ? "text-gray-300" : ""}`}
+                  placeholder="Buraya seslendirmek istediğiniz metni yazın..."
+                  maxLength={1000} // 1000 Karakter Limiti Aktif
+                  className="transition-all min-h-[180px] text-lg leading-relaxed resize-y"
                 />
                 <Button
                   size="icon"
@@ -154,38 +160,25 @@ export default function AudioReader() {
                   className="absolute top-2 right-2 h-8 w-8"
                   onClick={handleCopy}
                 >
-                  {copied ? (
-                    <Check className="h-4 w-4" />
-                  ) : (
-                    <Copy className="h-4 w-4" />
-                  )}
+                  {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                 </Button>
               </div>
 
-              <div className="flex justify-end pt-2">
+              {/* Kullanıcının göreceği canlı harf sayacı */}
+              <div className="flex justify-between items-center pt-2 text-sm text-gray-400">
+                <div>{text.length} / 1000 Karakter</div>
                 <TextStatistics text={text} />
               </div>
+
               <div className="flex gap-4 pb-4 min-h-14 items-center justify-center">
-                {voices ? (
-                  <>
-                    <VoiceSelector
-                      voices={voices}
-                      selectedVoice={selectedVoice}
-                      onVoiceChange={setSelectedVoice}
-                    />
-                    <div className="flex items-center gap-4 w-44">
-                      <SpeedControl speed={speed} onSpeedChange={setSpeed} />
-                    </div>
-                  </>
-                ) : error ? (
-                  <div className="text-red-400 font-semibold text-lg/6 text-center p-2">
-                    {error}
-                  </div>
-                ) : (
-                  <div className="animate-pulse text-center">
-                    Loading model...
-                  </div>
-                )}
+                <VoiceSelector
+                  voices={AVAILABLE_VOICES}
+                  selectedVoice={selectedVoice}
+                  onVoiceChange={setSelectedVoice}
+                />
+                <div className="flex items-center gap-4 w-44">
+                  <SpeedControl speed={speed} onSpeedChange={setSpeed} />
+                </div>
               </div>
 
               <Separator />
@@ -195,107 +188,55 @@ export default function AudioReader() {
                   size="lg"
                   onClick={handlePlayPause}
                   className={cn(
-                    "text-lg w-36 transition-all",
+                    "text-lg w-40 transition-all",
                     isPlaying && "bg-orange-600 hover:bg-orange-700",
                   )}
-                  disabled={
-                    (status === "ready" && !isPlaying && !text) ||
-                    (status !== "ready" && chunks.length === 0)
-                  }
+                  disabled={status === "generating" || !text}
                 >
                   {isPlaying ? (
                     <>
                       <Pause className="mr-1 size-8" />
-                      Pause
+                      Durdur
                     </>
                   ) : (
                     <>
                       <Play className="mr-1 size-8" />
-                      {processed || status === "generating"
-                        ? "Play"
-                        : "Generate"}
+                      {status === "generating" ? "Üretiliyor..." : audioUrl ? "Dinle" : "Sese Çevir"}
                     </>
                   )}
                 </Button>
+
                 <Button
                   size="lg"
                   variant="outline"
                   onClick={() => {
-                    if (!result) return;
-                    const url = URL.createObjectURL(result);
+                    if (!audioUrl) return;
                     const link = document.createElement("a");
-                    link.href = url;
-                    link.download = "audio.wav";
+                    link.href = audioUrl;
+                    link.download = "kokoro-ses.mp3";
                     link.click();
-                    URL.revokeObjectURL(url);
                   }}
-                  disabled={!result || status !== "ready"}
+                  disabled={!audioUrl}
                   className="ml-auto"
                 >
                   <Download className="mr-2 size-6" />
-                  Download Audio
+                  Sesi İndir
                 </Button>
               </div>
 
-              {chunks.length > 0 && (
-                <div className="mt-4 space-y-1 max-h-[320px] overflow-y-auto px-1 hover">
-                  {chunks.map(({ text, audio }, index) => (
-                    <AudioChunk
-                      key={index}
-                      text={text}
-                      audio={audio}
-                      onClick={() => {
-                        setCurrentChunkIndex(index);
-                      }}
-                      active={currentChunkIndex === index}
-                      playing={isPlaying}
-                      onStart={() => {
-                        setCurrentChunkIndex(index);
-                        setIsPlaying(true);
-                      }}
-                      onPause={() => {
-                        if (currentChunkIndex === index) {
-                          setIsPlaying(false);
-                        }
-                      }}
-                      onEnd={() => {
-                        // No more chunks are still generating, and we have reached the end
-                        if (
-                          status !== "generating" &&
-                          currentChunkIndex === chunks.length - 1
-                        ) {
-                          setIsPlaying(false);
-                          setCurrentChunkIndex(-1);
-                        } else {
-                          setCurrentChunkIndex((prev) => prev + 1);
-                        }
-                      }}
-                    />
-                  ))}
+              {error && (
+                <div className="text-red-500 font-semibold text-center p-2 bg-red-50 rounded-lg mt-2">
+                  {error}
                 </div>
               )}
             </CardContent>
           </Card>
         </div>
       </div>
-      <div className="fixed bottom-4 text-center w-full">
-        Powered by{" "}
-        <a
-          href="https://huggingface.co/docs/transformers.js"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-blue-500 underline"
-        >
-          🤗 Transformers.js
-        </a>
+      <div className="fixed bottom-4 text-center w-full text-gray-400 text-sm">
+        Süper Hafif Bulut Modeli Devrede 🚀
       </div>
-      <Toaster
-        toastOptions={{
-          style: {
-            fontSize: 16,
-          },
-        }}
-      />
+      <Toaster toastOptions={{ style: { fontSize: 16 } }} />
     </>
   );
 }
