@@ -111,7 +111,7 @@ export default function AudioReader() {
     const toastId = toast.loading("Ses sunucuda üretiliyor, lütfen bekleyin...");
 
     try {
-      const response = await fetch("/_worker.js", { 
+      const response = await fetch("/", { 
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text, voice: selectedVoice, speed })
